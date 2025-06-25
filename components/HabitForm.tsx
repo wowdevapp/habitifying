@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import {
   Animated,
   Easing,
@@ -7,34 +8,35 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
   Dimensions,
 } from "react-native";
 
-interface Habit {
-  id: string;
-  name: string;
-  description: string;
-  frequency: "day" | "week" | "month";
-  goal: number;
-  unit: string;
-}
+// Import subcomponents
+import FormInput from "./form/FormInput";
+import FrequencySelector from "./form/FrequencySelector";
+import GoalSelector from "./form/GoalSelector";
+import FormButtons from "./form/FormButtons";
+import { HabitFormProps, HabitFormData } from "./form/types";
 
-interface HabitFormProps {
-  visible: boolean;
-  onClose: () => void;
-  onSave: (habit: Omit<Habit, "id">) => void;
-}
+// Types moved to ./form/types.ts
 
 const HabitForm = ({ visible, onClose, onSave }: HabitFormProps) => {
-  const [habitName, setHabitName] = useState("");
-  const [habitDescription, setHabitDescription] = useState("");
-  const [frequency, setFrequency] = useState<"day" | "week" | "month">("day");
-  const [goal, setGoal] = useState<number>(1);
-  const [unit, setUnit] = useState<string>("");
+  // React Hook Form setup
+  const { control, handleSubmit, watch, setValue, reset } = useForm<HabitFormData>({ 
+    defaultValues: {
+      name: "",
+      description: "",
+      frequency: "day",
+      goal: 1,
+      unit: ""
+    }
+  });
+  
+  // Watch values for reactive updates
+  const frequency = watch("frequency");
+  const goal = watch("goal");
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -82,13 +84,13 @@ const HabitForm = ({ visible, onClose, onSave }: HabitFormProps) => {
   useEffect(() => {
     // Set sensible defaults based on frequency
     if (frequency === "day") {
-      setGoal(1); // Default to once per day
+      setValue("goal", 1); // Default to once per day
     } else if (frequency === "week") {
-      setGoal(3); // Default to 3 times per week
+      setValue("goal", 3); // Default to 3 times per week
     } else if (frequency === "month") {
-      setGoal(8); // Default to 8 times per month
+      setValue("goal", 8); // Default to 8 times per month
     }
-  }, [frequency]);
+  }, [frequency, setValue]);
 
   const handleCloseModal = () => {
     // Animate modal exit
@@ -105,29 +107,29 @@ const HabitForm = ({ visible, onClose, onSave }: HabitFormProps) => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setHabitName("");
-      setHabitDescription("");
-      setFrequency("day");
-      setGoal(1);
-      setUnit("");
+      reset({
+        name: "",
+        description: "",
+        frequency: "day",
+        goal: 1,
+        unit: ""
+      });
       onClose();
     });
   };
 
-  const handleSaveHabit = () => {
-    if (habitName.trim()) {
-      onSave({
-        name: habitName,
-        description: habitDescription,
-        frequency: frequency,
-        goal: goal,
-        unit: unit.trim(),
+  const onSubmit = (data: HabitFormData) => {
+    if (data.name.trim()) {
+      // Ensure unit is trimmed
+      data.unit = data.unit.trim();
+      onSave(data);
+      reset({
+        name: "",
+        description: "",
+        frequency: "day",
+        goal: 1,
+        unit: ""
       });
-      setHabitName("");
-      setHabitDescription("");
-      setFrequency("day");
-      setGoal(1);
-      setUnit("");
     }
   };
 
@@ -163,193 +165,48 @@ const HabitForm = ({ visible, onClose, onSave }: HabitFormProps) => {
             </View>
             <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Drink water, Read, Exercise"
-                placeholderTextColor="#666666"
-                value={habitName}
-                onChangeText={setHabitName}
-              />
-            </View>
+            <FormInput 
+              control={control}
+              name="name"
+              label="Habit Name"
+              placeholder="Enter habit name"
+            />
 
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Description (optional)</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Add some details about your habit"
-                placeholderTextColor="#666666"
-                value={habitDescription}
-                onChangeText={setHabitDescription}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
+            <FormInput 
+              control={control}
+              name="description"
+              label="Description"
+              placeholder="Enter description"
+              multiline={true}
+              numberOfLines={3}
+              optional={true}
+            />
 
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Unit (optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., pages, cups, kilometers"
-                placeholderTextColor="#666666"
-                value={unit}
-                onChangeText={setUnit}
-              />
-            </View>
+            <FormInput 
+              control={control}
+              name="unit"
+              label="Unit"
+              placeholder="e.g., glass, mile, page"
+              optional={true}
+            />
 
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>Frequency</Text>
-              <View style={styles.toggleContainer}>
-                <View style={styles.toggleBackground}>
-                  {/* Animated slider that moves with the selected option */}
-                  <Animated.View
-                    style={[styles.toggleSlider, { left: togglePosition }]}
-                  />
+            <FrequencySelector 
+              control={control}
+              watch={watch}
+              setValue={setValue}
+            />
 
-                  <TouchableOpacity
-                    style={styles.toggleOption}
-                    onPress={() => setFrequency("day")}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.toggleText,
-                        frequency === "day" && styles.activeToggleText,
-                      ]}
-                    >
-                      Day
-                    </Text>
-                  </TouchableOpacity>
+            <GoalSelector 
+              control={control}
+              watch={watch}
+              setValue={setValue}
+            />
 
-                  <TouchableOpacity
-                    style={styles.toggleOption}
-                    onPress={() => setFrequency("week")}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.toggleText,
-                        frequency === "week" && styles.activeToggleText,
-                      ]}
-                    >
-                      Week
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.toggleOption}
-                    onPress={() => setFrequency("month")}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.toggleText,
-                        frequency === "month" && styles.activeToggleText,
-                      ]}
-                    >
-                      Month
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>
-                {frequency === "day"
-                  ? "Day Goal"
-                  : frequency === "week"
-                  ? "Week Goal"
-                  : "Month Goal"}
-              </Text>
-              <View style={styles.goalContainer}>
-                <TouchableOpacity
-                  style={styles.goalButton}
-                  onPress={() => setGoal(Math.max(1, goal - 1))}
-                  disabled={goal <= 1}
-                >
-                  <Text
-                    style={[
-                      styles.goalButtonText,
-                      goal <= 1 && styles.goalButtonDisabled,
-                    ]}
-                  >
-                    -
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.goalValueContainer}>
-                  <Text style={styles.goalValue}>{goal}</Text>
-                  <Text style={styles.goalLabel}>
-                    {unit
-                      ? `${unit}${goal > 1 ? "s" : ""} per ${frequency.slice(
-                          0,
-                          -2
-                        )}`
-                      : frequency === "day"
-                      ? goal === 1
-                        ? "time per day"
-                        : "times per day"
-                      : frequency === "week"
-                      ? goal === 1
-                        ? "time per week"
-                        : "times per week"
-                      : goal === 1
-                      ? "time per month"
-                      : "times per month"}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.goalButton}
-                  onPress={() => {
-                    // Set reasonable max values based on frequency
-                    const maxValue =
-                      frequency === "day" ? 10 : frequency === "week" ? 7 : 31;
-                    setGoal(Math.min(maxValue, goal + 1));
-                  }}
-                  disabled={
-                    goal >=
-                    (frequency === "day" ? 10 : frequency === "week" ? 7 : 31)
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.goalButtonText,
-                      goal >=
-                        (frequency === "day"
-                          ? 10
-                          : frequency === "week"
-                          ? 7
-                          : 31) && styles.goalButtonDisabled,
-                    ]}
-                  >
-                    +
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCloseModal}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  !habitName.trim() && styles.saveButtonDisabled,
-                ]}
-                onPress={handleSaveHabit}
-                disabled={!habitName.trim()}
-              >
-                <Text style={styles.saveButtonText}>Create</Text>
-              </TouchableOpacity>
-            </View>
+            <FormButtons 
+              onCancel={handleCloseModal}
+              onSubmit={handleSubmit(onSubmit)}
+              watch={watch}
+            />
             </ScrollView>
           </Animated.View>
         </Animated.View>
@@ -393,175 +250,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#ffffff",
     textAlign: "left",
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#999999",
-    marginBottom: 10,
-  },
-  input: {
-    backgroundColor: "#1a1a1a",
-    borderRadius: 12,
-    padding: 16,
-    color: "#ffffff",
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#333333",
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  weekdaysContainer: {
-    marginBottom: 24,
-  },
-  weekdayButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  weekdayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#222",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  activeWeekday: {
-    backgroundColor: "#00ff88",
-  },
-  weekdayText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  activeWeekdayText: {
-    color: "#000000",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 24,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#1a1a1a",
-    marginRight: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  cancelButtonText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  saveButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#00ff88",
-    marginLeft: 10,
-    alignItems: "center",
-  },
-  saveButtonDisabled: {
-    backgroundColor: "#1a1a1a",
-    opacity: 0.5,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  saveButtonText: {
-    color: "#000000",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  toggleContainer: {
-    marginTop: 8,
-  },
-  toggleBackground: {
-    flexDirection: "row",
-    backgroundColor: "#1a1a1a",
-    borderRadius: 12,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: "#333",
-    position: "relative", // For absolute positioning of slider
-  },
-  toggleOption: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    zIndex: 1, // Ensure buttons are above the slider
-  },
-  toggleSlider: {
-    position: "absolute",
-    top: 4,
-    bottom: 4,
-    width: "33.33%",
-    backgroundColor: "#00ff88",
-    borderRadius: 8,
-    zIndex: 0,
-  },
-  toggleText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  activeToggleText: {
-    color: "#000000",
-  },
-  goalContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-    backgroundColor: "#1a1a1a",
-    borderRadius: 12,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  goalButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#222",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-  goalButtonText: {
-    color: "#00ff88",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  goalButtonDisabled: {
-    color: "#555",
-  },
-  goalValueContainer: {
-    flex: 1,
-    alignItems: "center",
-  },
-  goalValue: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  goalLabel: {
-    color: "#999",
-    fontSize: 14,
-    marginTop: 4,
-  },
+  }
 });

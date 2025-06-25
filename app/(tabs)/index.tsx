@@ -4,6 +4,7 @@ import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FloatingAddButton } from "../../components/FloatingAddButton";
 import { HabitCard } from "../../components/HabitCard";
+import { AnimatedHabitCard } from "../../components/AnimatedHabitCard";
 
 // Define the Habit type
 interface Habit {
@@ -12,6 +13,10 @@ interface Habit {
   description: string;
   streak: number;
   isCompleted: boolean;
+  isNew?: boolean;
+  frequency?: "day" | "week" | "month";
+  goal?: number;
+  unit?: string;
 }
 
 const HabitTrackerApp = () => {
@@ -48,25 +53,34 @@ const HabitTrackerApp = () => {
     setModalVisible(true);
   };
 
-  const handleSaveHabit = () => {
-    if (habitName.trim()) {
-      // Create a new habit object
-      const newHabit: Habit = {
-        id: Date.now().toString(),
-        name: habitName,
-        description: habitDescription,
-        streak: 0,
-        isCompleted: false,
-      };
+  const handleSaveHabit = (data: any) => {
+    // Create a new habit object with the isNew flag for animation
+    const newHabit: Habit = {
+      id: Date.now().toString(),
+      name: data.name,
+      description: data.description || "",
+      streak: 0,
+      isCompleted: false,
+      isNew: true, // Flag for animation
+      frequency: data.frequency,
+      goal: data.goal,
+      unit: data.unit
+    };
 
-      // Add the new habit to the habits array
-      setHabits([...habits, newHabit]);
+    // Add the new habit to the top of the habits array
+    setHabits([newHabit, ...habits]);
 
-      // Close the modal and reset form
-      setModalVisible(false);
-      setHabitName("");
-      setHabitDescription("");
-    }
+    // Close the modal
+    setModalVisible(false);
+    
+    // Remove the isNew flag after animation completes (3 seconds)
+    setTimeout(() => {
+      setHabits(currentHabits => 
+        currentHabits.map(habit => 
+          habit.id === newHabit.id ? { ...habit, isNew: false } : habit
+        )
+      );
+    }, 3000);
   };
 
   const handleCloseModal = () => {
@@ -141,14 +155,26 @@ const HabitTrackerApp = () => {
           showsVerticalScrollIndicator={false}
         >
           {habits.map((habit) => (
-            <HabitCard
-              key={habit.id}
-              name={habit.name}
-              streak={habit.streak}
-              isCompleted={habit.isCompleted}
-              isActive={habit.name === "Read"} // Just for demo purposes
-              onToggleComplete={() => handleToggleHabit(habit.id)}
-            />
+            habit.isNew ? (
+              <AnimatedHabitCard
+                key={habit.id}
+                id={habit.id}
+                name={habit.name}
+                streak={habit.streak}
+                isCompleted={habit.isCompleted}
+                onToggleComplete={() => handleToggleHabit(habit.id)}
+                isNew={true}
+              />
+            ) : (
+              <HabitCard
+                key={habit.id}
+                id={habit.id}
+                name={habit.name}
+                streak={habit.streak}
+                isCompleted={habit.isCompleted}
+                onToggleComplete={() => handleToggleHabit(habit.id)}
+              />
+            )
           ))}
           <View style={styles.bottomPadding} />
         </ScrollView>
