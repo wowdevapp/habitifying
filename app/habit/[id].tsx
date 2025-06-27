@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Calendar, DateData } from "react-native-calendars";
+import { MarkedDates } from "react-native-calendars/src/types";
 
 // Import the database directly
 import dbData from "../../db.json";
@@ -94,50 +96,32 @@ const HabitDetailScreen: React.FC = () => {
     }
   }, [id]);
 
-  // Calendar helper functions
-  const getDaysInMonth = (date: Date): number => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date): number => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
+  // Helper functions for date formatting and checking
   const formatDate = (year: number, month: number, day: number): string => {
     return `${year}-${String(month + 1).padStart(2, "0")}-${String(
       day
     ).padStart(2, "0")}`;
   };
 
-  const isToday = (year: number, month: number, day: number): boolean => {
+  const isFutureDate = (date: string): boolean => {
     const today = new Date();
-    return (
-      today.getFullYear() === year &&
-      today.getMonth() === month &&
-      today.getDate() === day
-    );
-  };
-
-  const isFutureDate = (year: number, month: number, day: number): boolean => {
-    const today = new Date();
-    const checkDate = new Date(year, month, day);
+    const checkDate = new Date(date);
     return checkDate > today;
   };
 
-  const isCompleted = (year: number, month: number, day: number): boolean => {
-    if (!habit) return false;
-    const dateString = formatDate(year, month, day);
-    return habit.completedDates.includes(dateString);
+  // Function to get today's date in YYYY-MM-DD format
+  const getTodayString = (): string => {
+    const today = new Date();
+    return formatDate(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
   };
 
-  const toggleDateCompletion = (
-    year: number,
-    month: number,
-    day: number
-  ): void => {
-    if (!habit || isFutureDate(year, month, day)) return;
+  const toggleDateCompletion = (dateString: string): void => {
+    if (!habit || isFutureDate(dateString)) return;
 
-    const dateString = formatDate(year, month, day);
     const newCompletedDates = [...habit.completedDates];
     
     // Check if the date is already completed
@@ -152,11 +136,8 @@ const HabitDetailScreen: React.FC = () => {
     }
 
     // Check if the toggled date is today
-    const today = new Date();
-    const isToday =
-      year === today.getFullYear() &&
-      month === today.getMonth() &&
-      day === today.getDate();
+    const todayString = getTodayString();
+    const isToday = dateString === todayString;
     
     // Update habit state with new completion status
     setHabit((prev) => {
@@ -170,122 +151,72 @@ const HabitDetailScreen: React.FC = () => {
     });
   };
 
-  const navigateMonth = (direction: number): void => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + direction);
-    setCurrentDate(newDate);
+  // Function to generate marked dates for the calendar
+  const getMarkedDates = (): MarkedDates => {
+    if (!habit) return {};
+    
+    const markedDates: MarkedDates = {};
+    const todayString = getTodayString();
+    
+    // Mark completed dates
+    habit.completedDates.forEach(date => {
+      markedDates[date] = {
+        selected: true,
+        selectedColor: habit.color || '#00D4AA',
+      };
+    });
+    
+    // Mark today if not completed
+    if (!habit.completedDates.includes(todayString)) {
+      markedDates[todayString] = {
+        selected: true,
+        selectedColor: '#2C2C2E',
+        selectedTextColor: habit.color || '#00D4AA',
+        dotColor: habit.color || '#00D4AA',
+      };
+    }
+    
+    return markedDates;
   };
-
-  const renderCalendar = (): ReactElement | null => {
+  
+  // Handle date selection in calendar
+  const handleDayPress = (day: DateData) => {
+    if (!isFutureDate(day.dateString)) {
+      toggleDateCompletion(day.dateString);
+    }
+  };
+  
+  // Render the calendar component
+  const renderCalendar = () => {
     if (!habit) return null;
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const monthNames: string[] = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    const dayNames: string[] = [
-      "Sun",
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-    ];
-
-    const calendarDays: ReactElement[] = [];
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      calendarDays.push(<View key={`empty-${i}`} style={styles.calendarDay} />);
-    }
-
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const completed = isCompleted(year, month, day);
-      const today = isToday(year, month, day);
-      const future = isFutureDate(year, month, day);
-
-      let dayStyle = [styles.calendarDay];
-      let textStyle = [styles.calendarDayText];
-
-      if (completed) {
-        dayStyle.push({ backgroundColor: habit.color });
-        textStyle.push({ color: "#000000", fontWeight: "700" });
-      } else if (future) {
-        dayStyle.push({ backgroundColor: "transparent" });
-        textStyle.push({ color: "#444" });
-      } else {
-        dayStyle.push({ backgroundColor: "transparent" });
-        textStyle.push({ color: "#888" });
-      }
-
-      if (today) {
-        dayStyle.push({
-          borderWidth: 2,
-          borderColor: habit.color,
-        });
-        if (!completed) {
-          textStyle.push({ color: habit.color });
-        }
-      }
-
-      calendarDays.push(
-        <TouchableOpacity
-          key={day}
-          style={dayStyle}
-          onPress={() => toggleDateCompletion(year, month, day)}
-          disabled={future}
-        >
-          <Text style={textStyle}>{day}</Text>
-        </TouchableOpacity>
-      );
-    }
-
+    
     return (
       <View style={styles.calendarContainer}>
-        <View style={styles.calendarHeader}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => navigateMonth(-1)}
-          >
-            <Text style={styles.navButtonText}>‹</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.monthTitle}>
-            {monthNames[month]} {year}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => navigateMonth(1)}
-          >
-            <Text style={styles.navButtonText}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.dayNamesContainer}>
-          {dayNames.map((dayName) => (
-            <Text key={dayName} style={styles.dayNameText}>
-              {dayName}
-            </Text>
-          ))}
-        </View>
-
-        <View style={styles.calendarGrid}>{calendarDays}</View>
+        <Calendar
+          current={currentDate.toISOString().split('T')[0]}
+          onDayPress={handleDayPress}
+          markedDates={getMarkedDates()}
+          onMonthChange={(month) => {
+            const newDate = new Date(month.timestamp);
+            setCurrentDate(newDate);
+          }}
+          hideExtraDays={true}
+          disableAllTouchEventsForDisabledDays={true}
+          enableSwipeMonths={true}
+          theme={{
+            backgroundColor: '#1C1C1E',
+            calendarBackground: '#1C1C1E',
+            textSectionTitleColor: '#8E8E93',
+            selectedDayBackgroundColor: habit.color || '#00D4AA',
+            selectedDayTextColor: '#000000',
+            todayTextColor: habit.color || '#00D4AA',
+            dayTextColor: '#FFFFFF',
+            textDisabledColor: '#48484A',
+            monthTextColor: '#FFFFFF',
+            indicatorColor: habit.color || '#00D4AA',
+            arrowColor: '#FFFFFF',
+          }}
+        />
       </View>
     );
   };
@@ -382,12 +313,7 @@ const HabitDetailScreen: React.FC = () => {
                 },
               ]}
               onPress={() => {
-                const today = new Date();
-                toggleDateCompletion(
-                  today.getFullYear(),
-                  today.getMonth(),
-                  today.getDate()
-                );
+                toggleDateCompletion(getTodayString());
               }}
             >
               {habit.completedToday ? (
@@ -617,60 +543,8 @@ const styles = StyleSheet.create({
   calendarContainer: {
     backgroundColor: "#1C1C1E",
     borderRadius: 20,
-    padding: 20,
-  },
-  calendarHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  navButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#2C2C2E",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  navButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#ffffff",
-  },
-  monthTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
-  },
-  dayNamesContainer: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  dayNameText: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#8E8E93",
-    paddingVertical: 4,
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  calendarDay: {
-    width: "14.28%",
-    aspectRatio: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 4,
-    borderRadius: 8,
-  },
-  calendarDayText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#ffffff",
+    padding: 10,
+    overflow: "hidden",
   },
 });
 
