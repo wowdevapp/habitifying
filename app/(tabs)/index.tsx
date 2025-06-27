@@ -1,11 +1,18 @@
 import HabitForm from "@/components/HabitForm";
-import { useEffect, useState, useRef } from "react";
-import { ScrollView, StatusBar, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import axios from "axios";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AnimatedHabitCard } from "../../components/AnimatedHabitCard";
 import { FloatingAddButton } from "../../components/FloatingAddButton";
 import { HabitCard } from "../../components/HabitCard";
-import { AnimatedHabitCard } from "../../components/AnimatedHabitCard";
-import axios from "axios";
 
 // Define the Habit type
 interface Habit {
@@ -18,6 +25,8 @@ interface Habit {
   frequency?: "day" | "week" | "month";
   goal?: number;
   unit?: string;
+  color?: string;
+  icon?: string;
 }
 
 // API base URL - using computer's IP address instead of localhost for mobile access
@@ -39,6 +48,7 @@ const HabitTrackerApp = () => {
       setHabits(response.data);
       fetchStats();
       setLoading(false);
+      console.log(response.data);
     } catch (err) {
       console.error("Error fetching habits:", err);
       setError("Failed to load habits. Please try again.");
@@ -77,12 +87,12 @@ const HabitTrackerApp = () => {
         isCompleted: false,
         frequency: data.frequency,
         goal: data.goal,
-        unit: data.unit
+        unit: data.unit,
       };
 
       // Save the habit to the server
       const response = await axios.post(`${API_URL}/habits`, newHabit);
-      
+
       // Add the new habit with isNew flag for animation
       const savedHabit = { ...response.data, isNew: true };
       setHabits([savedHabit, ...habits]);
@@ -92,16 +102,16 @@ const HabitTrackerApp = () => {
 
       // Close the modal
       setModalVisible(false);
-      
+
       // Scroll to the top to see the newly created habit
       if (scrollViewRef.current) {
         scrollViewRef.current.scrollTo({ y: 0, animated: true });
       }
-      
+
       // Remove the isNew flag after animation completes (3 seconds)
       setTimeout(() => {
-        setHabits(currentHabits => 
-          currentHabits.map(habit => 
+        setHabits((currentHabits) =>
+          currentHabits.map((habit) =>
             habit.id === savedHabit.id ? { ...habit, isNew: false } : habit
           )
         );
@@ -120,7 +130,7 @@ const HabitTrackerApp = () => {
   const handleToggleHabit = async (habitId: string) => {
     try {
       // Find the habit to toggle
-      const habitToToggle = habits.find(habit => habit.id === habitId);
+      const habitToToggle = habits.find((habit) => habit.id === habitId);
       if (!habitToToggle) return;
 
       // Optimistically update UI
@@ -134,7 +144,7 @@ const HabitTrackerApp = () => {
 
       // Update on the server
       await axios.patch(`${API_URL}/habits/${habitId}`, {
-        isCompleted: !habitToToggle.isCompleted
+        isCompleted: !habitToToggle.isCompleted,
       });
 
       // Update stats
@@ -146,8 +156,6 @@ const HabitTrackerApp = () => {
     }
   };
 
-
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
@@ -156,12 +164,13 @@ const HabitTrackerApp = () => {
       <ScrollView
         ref={scrollViewRef}
         style={styles.content}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.greeting}>Good morning</Text>
           <Text style={styles.title}>Habits</Text>
         </View>
-        
+
         {/* Loading and Error States */}
         {loading && (
           <View style={styles.loadingContainer}>
@@ -169,38 +178,15 @@ const HabitTrackerApp = () => {
             <Text style={styles.loadingText}>Loading habits...</Text>
           </View>
         )}
-        
+
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-
-        {/* Progress Circle */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressCircleContainer}>
-            {/* Background Circle */}
-            <View style={styles.progressCircle}></View>
-
-            {/* Progress Arc - This is a semi-transparent overlay to show progress */}
-            <View
-              style={[
-                styles.progressArc,
-                { transform: [{ rotate: `${overallProgress * 3.6}deg` }] },
-              ]}
-            ></View>
-
-            {/* Inner Circle with Text */}
-            <View style={styles.progressInnerCircle}>
-              <Text style={styles.progressText}>{overallProgress}%</Text>
-              <Text style={styles.progressLabel}>completed</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Habit Cards */}
         <View style={styles.habitsList}>
-          {habits.map((habit) => (
+          {habits.map((habit) =>
             habit.isNew ? (
               <AnimatedHabitCard
                 key={habit.id}
@@ -219,9 +205,11 @@ const HabitTrackerApp = () => {
                 streak={habit.streak}
                 isCompleted={habit.isCompleted}
                 onToggleComplete={() => handleToggleHabit(habit.id)}
+                color={habit.color}
+                icon={habit.icon}
               />
             )
-          ))}
+          )}
           <View style={styles.bottomPadding} />
         </View>
       </ScrollView>

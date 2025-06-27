@@ -1,6 +1,6 @@
+import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
 
 interface HabitCardProps {
   id: string;
@@ -9,6 +9,8 @@ interface HabitCardProps {
   isCompleted: boolean;
   onToggleComplete: () => void;
   isActive?: boolean;
+  color?: string;
+  icon?: string;
 }
 
 export const HabitCard: React.FC<HabitCardProps> = ({
@@ -18,9 +20,11 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   isCompleted,
   onToggleComplete,
   isActive = false,
+  color = "#00ff88",
+  icon = "📝",
 }) => {
   const router = useRouter();
-  
+
   const handleCardPress = () => {
     router.push(`/habit/${id}`);
   };
@@ -28,18 +32,29 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
-    <TouchableOpacity 
-      style={[styles.container, isActive && styles.activeContainer]}
+    <TouchableOpacity
+      style={[
+        styles.container,
+        isActive && styles.activeContainer,
+        { borderColor: color || "#333" },
+      ]}
       onPress={handleCardPress}
       activeOpacity={0.8}
     >
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>{name}</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.icon}>{icon}</Text>
+          <Text style={styles.title}>{name}</Text>
+        </View>
         <Text style={styles.streak}>{streak} day streak</Text>
       </View>
 
       <TouchableOpacity
-        style={[styles.checkButton, isCompleted && styles.completedButton]}
+        style={[
+          styles.checkButton,
+          { borderColor: color },
+          isCompleted && { backgroundColor: color },
+        ]}
         onPress={onToggleComplete}
       >
         {isCompleted && <Text style={styles.checkmark}>✓</Text>}
@@ -53,6 +68,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
               style={[
                 styles.dayIndicator,
                 true && styles.completedDay,
+                true && { backgroundColor: color },
                 index === 6 && styles.todayIndicator, // Assuming Sunday is today
               ]}
             />
@@ -82,11 +98,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingRight: 50,
   },
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  icon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
   title: {
     fontSize: 18,
     fontWeight: "600",
     color: "#ffffff",
-    marginBottom: 4,
   },
   streak: {
     fontSize: 14,
@@ -100,13 +124,12 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#333",
     justifyContent: "center",
     alignItems: "center",
   },
   completedButton: {
-    backgroundColor: "#00ff88",
-    borderColor: "#00ff88",
+    backgroundColor: "",
+    borderColor: "",
   },
   checkmark: {
     color: "#000000",

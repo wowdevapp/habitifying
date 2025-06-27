@@ -19,7 +19,7 @@
       "frequency": "day",
       "goal": 8,
       "unit": "glass",
-      "isCompleted": true
+      "isCompleted": false
     },
     {
       "id": "2",
@@ -126,7 +126,8 @@
       ],
       "frequency": "day",
       "goal": 1,
-      "unit": "entry"
+      "unit": "entry",
+      "isCompleted": false
     },
     {
       "id": "7",
@@ -159,7 +160,8 @@
       ],
       "frequency": "day",
       "goal": 1,
-      "unit": "session"
+      "unit": "session",
+      "isCompleted": false
     },
     {
       "id": "9",
