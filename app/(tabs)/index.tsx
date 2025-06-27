@@ -1,10 +1,11 @@
 import HabitForm from "@/components/HabitForm";
 import { useEffect, useState, useRef } from "react";
-import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FloatingAddButton } from "../../components/FloatingAddButton";
 import { HabitCard } from "../../components/HabitCard";
 import { AnimatedHabitCard } from "../../components/AnimatedHabitCard";
+import axios from "axios";
 
 // Define the Habit type
 interface Habit {
@@ -19,108 +20,133 @@ interface Habit {
   unit?: string;
 }
 
+// API base URL - using computer's IP address instead of localhost for mobile access
+const API_URL = "http://192.168.100.67:3000";
+
 const HabitTrackerApp = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [habitName, setHabitName] = useState("");
-  const [habitDescription, setHabitDescription] = useState("");
-  const [habits, setHabits] = useState<Habit[]>([
-    {
-      id: "1",
-      name: "Drink water",
-      description: "Drink 8 glasses of water daily",
-      streak: 5,
-      isCompleted: true,
-    },
-    {
-      id: "2",
-      name: "Read",
-      description: "Read for at least 30 minutes",
-      streak: 12,
-      isCompleted: true,
-    },
-    {
-      id: "3",
-      name: "Exercise",
-      description: "Do a 30-minute workout",
-      streak: 3,
-      isCompleted: false,
-    },
-  ]);
-  const [overallProgress, setOverallProgress] = useState(67); // Overall completion percentage
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [overallProgress, setOverallProgress] = useState(0); // Overall completion percentage
+
+  // Fetch habits from the API
+  const fetchHabits = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/habits`);
+      setHabits(response.data);
+      fetchStats();
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching habits:", err);
+      setError("Failed to load habits. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Fetch stats from the API
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/stats`);
+      setOverallProgress(response.data.overallProgress);
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+    }
+  };
+
+  // Load habits when component mounts
+  useEffect(() => {
+    fetchHabits();
+  }, []);
 
   const handleAddHabit = () => {
     console.log("Add habit pressed");
     setModalVisible(true);
   };
 
-  const handleSaveHabit = (data: any) => {
-    // Create a new habit object with the isNew flag for animation
-    const newHabit: Habit = {
-      id: Date.now().toString(),
-      name: data.name,
-      description: data.description || "",
-      streak: 0,
-      isCompleted: false,
-      isNew: true, // Flag for animation
-      frequency: data.frequency,
-      goal: data.goal,
-      unit: data.unit
-    };
+  const handleSaveHabit = async (data: any) => {
+    try {
+      // Create a new habit object
+      const newHabit: Habit = {
+        id: Date.now().toString(),
+        name: data.name,
+        description: data.description || "",
+        streak: 0,
+        isCompleted: false,
+        frequency: data.frequency,
+        goal: data.goal,
+        unit: data.unit
+      };
 
-    // Add the new habit to the top of the habits array
-    setHabits([newHabit, ...habits]);
+      // Save the habit to the server
+      const response = await axios.post(`${API_URL}/habits`, newHabit);
+      
+      // Add the new habit with isNew flag for animation
+      const savedHabit = { ...response.data, isNew: true };
+      setHabits([savedHabit, ...habits]);
 
-    // Close the modal
-    setModalVisible(false);
-    
-    // Scroll to the top to see the newly created habit
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      // Update stats
+      await fetchStats();
+
+      // Close the modal
+      setModalVisible(false);
+      
+      // Scroll to the top to see the newly created habit
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
+      
+      // Remove the isNew flag after animation completes (3 seconds)
+      setTimeout(() => {
+        setHabits(currentHabits => 
+          currentHabits.map(habit => 
+            habit.id === savedHabit.id ? { ...habit, isNew: false } : habit
+          )
+        );
+      }, 3000);
+    } catch (err) {
+      console.error("Error saving habit:", err);
+      setError("Failed to save habit. Please try again.");
     }
-    
-    // Remove the isNew flag after animation completes (3 seconds)
-    setTimeout(() => {
-      setHabits(currentHabits => 
-        currentHabits.map(habit => 
-          habit.id === newHabit.id ? { ...habit, isNew: false } : habit
-        )
-      );
-    }, 3000);
   };
 
   const handleCloseModal = () => {
     setModalVisible(false);
-    setHabitName("");
-    setHabitDescription("");
   };
 
   // Function to toggle habit completion
-  const handleToggleHabit = (habitId: string) => {
-    setHabits(
-      habits.map((habit) =>
-        habit.id === habitId
-          ? { ...habit, isCompleted: !habit.isCompleted }
-          : habit
-      )
-    );
+  const handleToggleHabit = async (habitId: string) => {
+    try {
+      // Find the habit to toggle
+      const habitToToggle = habits.find(habit => habit.id === habitId);
+      if (!habitToToggle) return;
 
-    // Update overall progress
-    calculateProgress();
+      // Optimistically update UI
+      setHabits(
+        habits.map((habit) =>
+          habit.id === habitId
+            ? { ...habit, isCompleted: !habit.isCompleted }
+            : habit
+        )
+      );
+
+      // Update on the server
+      await axios.patch(`${API_URL}/habits/${habitId}`, {
+        isCompleted: !habitToToggle.isCompleted
+      });
+
+      // Update stats
+      await fetchStats();
+    } catch (err) {
+      console.error("Error toggling habit:", err);
+      // Revert the optimistic update if there's an error
+      fetchHabits();
+    }
   };
 
-  // Calculate overall progress
-  const calculateProgress = () => {
-    if (habits.length === 0) return 0;
-    const completedCount = habits.filter((habit) => habit.isCompleted).length;
-    const percentage = Math.round((completedCount / habits.length) * 100);
-    setOverallProgress(percentage);
-  };
 
-  // Calculate progress on initial render and when habits change
-  useEffect(() => {
-    calculateProgress();
-  }, [habits]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -135,6 +161,20 @@ const HabitTrackerApp = () => {
           <Text style={styles.greeting}>Good morning</Text>
           <Text style={styles.title}>Habits</Text>
         </View>
+        
+        {/* Loading and Error States */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00ff88" />
+            <Text style={styles.loadingText}>Loading habits...</Text>
+          </View>
+        )}
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* Progress Circle */}
         <View style={styles.progressContainer}>
@@ -304,6 +344,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    color: "#666666",
+    marginTop: 10,
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: 20,
+    backgroundColor: "rgba(255, 0, 0, 0.1)",
+    borderRadius: 8,
+    marginVertical: 10,
+  },
+  errorText: {
+    color: "#ff5555",
+    textAlign: "center",
   },
   modalOverlay: {
     flex: 1,
