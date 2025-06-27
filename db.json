@@ -236,6 +236,16 @@
       "frequency": "month",
       "goal": 8,
       "unit": ""
+    },
+    {
+      "id": "1751038680871",
+      "name": "Test",
+      "description": "Ghh",
+      "streak": 0,
+      "isCompleted": false,
+      "frequency": "day",
+      "goal": 3,
+      "unit": "Gh"
     }
   ],
   "stats": {

@@ -139,30 +139,33 @@ const HabitDetailScreen: React.FC = () => {
 
     const dateString = formatDate(year, month, day);
     const newCompletedDates = [...habit.completedDates];
-
-    if (newCompletedDates.includes(dateString)) {
+    
+    // Check if the date is already completed
+    const dateIsCompleted = newCompletedDates.includes(dateString);
+    
+    // Toggle the completion status
+    if (dateIsCompleted) {
       const index = newCompletedDates.indexOf(dateString);
       newCompletedDates.splice(index, 1);
     } else {
       newCompletedDates.push(dateString);
     }
 
-    // Update completedToday flag if the date is today
+    // Check if the toggled date is today
     const today = new Date();
     const isToday =
       year === today.getFullYear() &&
       month === today.getMonth() &&
       day === today.getDate();
-
-    const isNowCompleted = !newCompletedDates.includes(dateString);
-
+    
+    // Update habit state with new completion status
     setHabit((prev) => {
       if (!prev) return null;
       return {
         ...prev,
         completedDates: newCompletedDates,
-        completedToday: isToday ? isNowCompleted : prev.completedToday,
-        // Update streak logic would go here in a real app
+        // If the toggled date is today, update completedToday accordingly
+        completedToday: isToday ? !dateIsCompleted : prev.completedToday,
       };
     });
   };
