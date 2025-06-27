@@ -1,12 +1,12 @@
-import React from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View 
-} from 'react-native';
-import { Control, Controller, UseFormWatch, UseFormSetValue } from 'react-hook-form';
-import { HabitFormData } from '../form/types';
+import React from "react";
+import {
+  Control,
+  Controller,
+  UseFormSetValue,
+  UseFormWatch,
+} from "react-hook-form";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { HabitFormData } from "../form/types";
 
 interface GoalSelectorProps {
   control: Control<HabitFormData>;
@@ -15,8 +15,8 @@ interface GoalSelectorProps {
 }
 
 const GoalSelector = ({ control, watch, setValue }: GoalSelectorProps) => {
-  const frequency = watch('frequency');
-  const goal = watch('goal');
+  const frequency = watch("frequency");
+  const goal = watch("goal");
 
   return (
     <View style={styles.formGroup}>
@@ -28,20 +28,52 @@ const GoalSelector = ({ control, watch, setValue }: GoalSelectorProps) => {
           : "Month Goal"}
       </Text>
       <View style={styles.goalContainer}>
-        <TouchableOpacity
-          style={styles.goalButton}
-          onPress={() => setValue("goal", Math.max(1, goal - 1))}
-          disabled={goal <= 1}
-        >
-          <Text
-            style={[
-              styles.goalButtonText,
-              goal <= 1 && styles.goalButtonDisabled,
-            ]}
+        <View style={styles.buttonsColumn}>
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", Math.max(1, goal - 10))}
+            disabled={goal <= 10}
           >
-            -
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.goalButtonText, styles.smallButtonText,
+                goal <= 10 && styles.goalButtonDisabled,
+              ]}
+            >
+              -10
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", Math.max(1, goal - 5))}
+            disabled={goal <= 5}
+          >
+            <Text
+              style={[
+                styles.goalButtonText, styles.smallButtonText,
+                goal <= 5 && styles.goalButtonDisabled,
+              ]}
+            >
+              -5
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", Math.max(1, goal - 1))}
+            disabled={goal <= 1}
+          >
+            <Text
+              style={[
+                styles.goalButtonText, styles.smallButtonText,
+                goal <= 1 && styles.goalButtonDisabled,
+              ]}
+            >
+              -1
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.goalValueContainer}>
           <Text style={styles.goalValue}>{goal}</Text>
@@ -51,10 +83,7 @@ const GoalSelector = ({ control, watch, setValue }: GoalSelectorProps) => {
             render={({ field: { value } }) => (
               <Text style={styles.goalLabel}>
                 {value
-                  ? `${value}${goal > 1 ? "s" : ""} per ${frequency.slice(
-                      0,
-                      -2
-                    )}`
+                  ? `${value}${goal > 1 ? "s" : ""} per ${frequency}`
                   : frequency === "day"
                   ? goal === 1
                     ? "time per day"
@@ -71,13 +100,31 @@ const GoalSelector = ({ control, watch, setValue }: GoalSelectorProps) => {
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.goalButton}
-          onPress={() => setValue("goal", goal + 1)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.goalButtonText}>+</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonsColumn}>
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", goal + 1)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.goalButtonText, styles.smallButtonText]}>+1</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", goal + 5)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.goalButtonText, styles.smallButtonText]}>+5</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.goalButton, styles.smallButton]}
+            onPress={() => setValue("goal", goal + 10)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.goalButtonText, styles.smallButtonText]}>+10</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -104,6 +151,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
+  buttonsColumn: {
+    flexDirection: "column",
+    justifyContent: "space-between",
+    height: 120,
+  },
   goalButton: {
     width: 40,
     height: 40,
@@ -114,10 +166,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
+  smallButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginVertical: 2,
+  },
   goalButtonText: {
     color: "#00ff88",
     fontSize: 20,
     fontWeight: "700",
+  },
+  smallButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   goalButtonDisabled: {
     color: "#555",
@@ -133,8 +195,10 @@ const styles = StyleSheet.create({
   },
   goalLabel: {
     color: "#999",
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 10,
+    marginTop: 2,
+    flexShrink: 1,
+    textAlign: "center",
   },
 });
 

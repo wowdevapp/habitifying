@@ -1,5 +1,5 @@
 import HabitForm from "@/components/HabitForm";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FloatingAddButton } from "../../components/FloatingAddButton";
@@ -20,6 +20,7 @@ interface Habit {
 }
 
 const HabitTrackerApp = () => {
+  const scrollViewRef = useRef<ScrollView>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [habitName, setHabitName] = useState("");
   const [habitDescription, setHabitDescription] = useState("");
@@ -73,6 +74,11 @@ const HabitTrackerApp = () => {
     // Close the modal
     setModalVisible(false);
     
+    // Scroll to the top to see the newly created habit
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+    
     // Remove the isNew flag after animation completes (3 seconds)
     setTimeout(() => {
       setHabits(currentHabits => 
@@ -121,7 +127,10 @@ const HabitTrackerApp = () => {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
 
       {/* Main Content Area */}
-      <View style={styles.content}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.content}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.greeting}>Good morning</Text>
           <Text style={styles.title}>Habits</Text>
@@ -150,10 +159,7 @@ const HabitTrackerApp = () => {
         </View>
 
         {/* Habit Cards */}
-        <ScrollView
-          style={styles.habitsList}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.habitsList}>
           {habits.map((habit) => (
             habit.isNew ? (
               <AnimatedHabitCard
@@ -177,8 +183,8 @@ const HabitTrackerApp = () => {
             )
           ))}
           <View style={styles.bottomPadding} />
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
 
       {/* Floating Add Button */}
       <FloatingAddButton onPress={handleAddHabit} />
